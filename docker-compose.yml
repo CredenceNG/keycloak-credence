@@ -33,6 +33,7 @@
 # `chmod +x keycloak-restore-database.sh`
 # Usage of this script ensures a controlled and guided process to restore the database from an existing backup.
 
+
 # Author
 # I’m Vladimir Mikhalev, the Docker Captain, but my friends can call me Valdemar.
 # https://www.docker.com/captains/vladimir-mikhalev/
@@ -91,9 +92,54 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+
+  vault:
+    image: hashicorp/vault:1.14.2
+    container_name: vault
+    restart: always
+    ports:
+      - "8200:8200"  # Optional; for local access only if needed
+    environment:
+      VAULT_ADDR: https://0.0.0.0:8200  #internal port
+    command: server
+    volumes:
+      - ./vault/config:/vault/config
+      - ./vault/data:/vault/data
+      - ./vault/logs:/vault/logs
+    cap_add:
+      - IPC_LOCK
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vault.rule=Host(`vault.credence.ng`)"
+      - "traefik.http.routers.vault.entrypoints=websecure"
+      - "traefik.http.routers.vault.service=vault"
+      - "traefik.http.services.vault.loadbalancer.server.port=8200" #internal port
+      - "traefik.http.routers.vault.tls=true"
+      - "traefik.http.routers.vault.tls.certresolver=letsencrypt"
+      - "traefik.docker.network=traefik-network"
+    networks:
+      - traefik-network
+      - keycloak-network
+
+  consul:
+    image: hashicorp/consul:1.16.1
+    container_name: consul
+    restart: always
+    ports:
+      - "8500:8500"  # Optional; expose locally for debugging
+    environment:
+      CONSUL_BIND_INTERFACE: eth0
+    command: agent -server -bootstrap-expect=1 -data-dir=/consul/data -client=0.0.0.0
+    volumes:
+      - ./consul/data:/consul/data
+    networks:
+      - traefik-network
+
+
   keycloak:
     image: ${KEYCLOAK_IMAGE_TAG}
     command: start-dev
+    container_name: keycloak
     environment:
       KC_DB: postgres
       KC_DB_URL_HOST: postgres
@@ -112,7 +158,7 @@ services:
       - keycloak-network
       - traefik-network
     healthcheck:
-      test: 
+      test:
       - "CMD-SHELL"
       - |
         exec 3<>/dev/tcp/localhost/9000 &&
@@ -141,6 +187,7 @@ services:
 
   traefik:
     image: ${TRAEFIK_IMAGE_TAG}
+    container_name: traefik
     command:
       - "--log.level=${TRAEFIK_LOG_LEVEL}"
       - "--accesslog=true"
@@ -190,7 +237,10 @@ services:
       - "traefik.http.routers.http-catchall.entrypoints=web"
       - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+
     restart: unless-stopped
+
+
 
   backups:
     image: ${KEYCLOAK_POSTGRES_IMAGE_TAG}
