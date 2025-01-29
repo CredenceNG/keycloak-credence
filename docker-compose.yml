@@ -189,7 +189,7 @@ services:
     container_name: bore
     command: server
     environment:
-      - BORE_SECRET=change_me
+      - BORE_SECRET=rwXPqspCABJzqh47i723wf9
     stdin_open: true
     tty: true
     init: true
