@@ -163,6 +163,33 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+<<<<<<< HEAD
+=======
+  bore:
+    image: ekzhang/bore
+    container_name: bore
+    command: server
+    environment:
+      - BORE_SECRET=rwXPqspCABJzqh47i723wf9
+    stdin_open: true
+    tty: true
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bore.rule=Host(`bore.credence.ng`)"
+      - "traefik.http.routers.bore.entrypoints=websecure"
+      - "traefik.http.routers.bore.service=vault"
+      - "traefik.http.services.bore.loadbalancer.server.port=7835" #internal port
+      - "traefik.http.routers.bore.tls=true"
+      - "traefik.http.routers.bore.tls.certresolver=letsencrypt"
+      - "traefik.docker.network=traefik-network"
+    networks:
+      - traefik-network
+      - keycloak-network
+   
+>>>>>>> 77e99da72e616b70e4b81fb7642e574cfd0bfd38
   traefik:
     image: ${TRAEFIK_IMAGE_TAG}
     container_name: traefik
